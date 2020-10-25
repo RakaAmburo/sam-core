@@ -11,6 +11,7 @@ public class Test {
 
     @GetMapping()
     Flux<String> getAll() {
-        return Flux.just("Its working");
+        System.out.println("test");
+        return Flux.just("Its working!");
     }
 }
