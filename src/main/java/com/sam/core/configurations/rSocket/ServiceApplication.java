@@ -92,7 +92,7 @@ class GreetingController {
 
         return Flux.create(
                 (FluxSink<BigRequest> sink) -> {
-                    settings.doFirst(()->{
+                    settings.doOnSubscribe(thing ->{
                         pong(clientRSocketConnection);
                     })
                             .doOnNext(
@@ -113,7 +113,7 @@ class GreetingController {
         var clientHealth =
                 clientRSocketConnection
                         .route("amAlive")
-                        .data(pongSignal)
+                        //.data(pongSignal)
                         .retrieveFlux(String.class)
                         .doOnNext(chs -> log.info(chs)).subscribe();
 
