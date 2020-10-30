@@ -88,7 +88,7 @@ class GreetingController {
     @MessageMapping("channel")
     Flux<BigRequest> channel(RSocketRequester clientRSocketConnection, Flux<BigRequest> settings) {
 
-        pong(clientRSocketConnection);
+
 
         return Flux.create(
                 (FluxSink<BigRequest> sink) -> {
