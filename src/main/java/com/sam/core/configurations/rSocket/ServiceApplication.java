@@ -88,13 +88,15 @@ class GreetingController {
     @MessageMapping("channel")
     Flux<BigRequest> channel(RSocketRequester clientRSocketConnection, Flux<BigRequest> settings) {
 
-
+        clientRSocketConnection
+                .route("amAlive")
+                //.data(pongSignal)
+                .retrieveFlux(String.class)
+                .doOnNext(chs -> log.info(chs)).subscribe();
 
         return Flux.create(
                 (FluxSink<BigRequest> sink) -> {
-                    settings.doOnSubscribe(thing ->{
-                        pong(clientRSocketConnection);
-                    })
+                    settings
                             .doOnNext(
                                     i -> {
                                         sink.next(i);
