@@ -104,6 +104,7 @@ class GreetingController {
     private void pong(
             RSocketRequester clientRSocketConnection) {
 
+        log.info("entra en el ping");
         Flux<String> pongSignal =
                 Flux.fromStream(Stream.generate(() -> "ping")).delayElements(Duration.ofMillis(1000));
 
