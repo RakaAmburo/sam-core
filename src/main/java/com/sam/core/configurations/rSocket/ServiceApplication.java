@@ -7,6 +7,7 @@ import lombok.extern.log4j.Log4j2;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.messaging.handler.annotation.MessageMapping;
+import org.springframework.messaging.rsocket.RSocketRequester;
 import org.springframework.messaging.rsocket.RSocketStrategies;
 import org.springframework.messaging.rsocket.annotation.support.RSocketMessageHandler;
 import org.springframework.security.config.Customizer;
@@ -20,6 +21,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.FluxSink;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.BlockingQueue;
@@ -84,7 +86,9 @@ class GreetingController {
     private static BlockingQueue<BigRequest> queue = new LinkedBlockingDeque<>();
 
     @MessageMapping("channel")
-    Flux<BigRequest> channel(final Flux<BigRequest> settings) {
+    Flux<BigRequest> channel(RSocketRequester clientRSocketConnection, Flux<BigRequest> settings) {
+
+        pong(clientRSocketConnection);
 
         return Flux.create(
                 (FluxSink<BigRequest> sink) -> {
@@ -95,6 +99,23 @@ class GreetingController {
                                     })
                             .subscribe();
                 });
+    }
+
+    private void pong(
+            RSocketRequester clientRSocketConnection) {
+
+        Flux<String> pongSignal =
+                Flux.fromStream(Stream.generate(() -> "ping")).delayElements(Duration.ofMillis(1000));
+
+        var clientHealth =
+                clientRSocketConnection
+                        .route("amAlive")
+                        .data(pongSignal)
+                        .retrieveFlux(String.class)
+                        .doOnNext(chs -> log.info(chs)).subscribe();
+
+
+
     }
 
 
