@@ -87,9 +87,11 @@ class GreetingController {
     @MessageMapping("channel")
     Flux<BigRequest> channel(RSocketRequester clientRSocketConnection, Flux<BigRequest> settings) {
 
+        Flux<String> pongSignal =
+                Flux.fromStream(Stream.generate(() -> "ping")).delayElements(Duration.ofMillis(1000));
         var clientHealth = clientRSocketConnection
                 .route("amAlive")
-                //.data(pongSignal)
+                .data(pongSignal)
                 .retrieveFlux(String.class)
                 .doOnNext(chs -> log.info(chs))
                 .filter(ping -> ping.isEmpty());
