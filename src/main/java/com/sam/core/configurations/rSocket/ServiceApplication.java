@@ -19,6 +19,7 @@ import org.springframework.security.rsocket.core.PayloadSocketAcceptorIntercepto
 import org.springframework.stereotype.Controller;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.FluxSink;
+import reactor.core.publisher.Mono;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -84,6 +85,12 @@ class BigRequest {
 class GreetingController {
 
     private static BlockingQueue<BigRequest> queue = new LinkedBlockingDeque<>();
+
+    @MessageMapping("startPing")
+    Mono<String> startPing(){
+
+        return Mono.just("start ping ok!");
+    }
 
     @MessageMapping("channel")
     Flux<BigRequest> channel(RSocketRequester clientRSocketConnection, Flux<BigRequest> settings) {
