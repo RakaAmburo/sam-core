@@ -90,12 +90,13 @@ class GreetingController {
     Mono<String> startPing(RSocketRequester clientRSocketConnection){
 
         Flux<String> pongSignal =
-                Flux.fromStream(Stream.generate(() -> "ping")).delayElements(Duration.ofMillis(2000));
+                Flux.fromStream(Stream.generate(() -> "ping")).delayElements(Duration.ofMillis(1000));
         clientRSocketConnection
-                .route("alive")
+                .route("health")
                 .data(pongSignal)
-                .retrieveFlux(String.class)
-                .doOnNext(chs -> log.info(chs)).subscribe();
+                .retrieveFlux(ClientHealthState.class)
+                .filter(chs -> !chs.isHealthy())
+                .doOnNext(chs -> log.info("not healthy! ")).subscribe();
 
         return Mono.just("start ping ok!");
     }
