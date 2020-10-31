@@ -87,7 +87,15 @@ class GreetingController {
     private static BlockingQueue<BigRequest> queue = new LinkedBlockingDeque<>();
 
     @MessageMapping("startPing")
-    Mono<String> startPing(){
+    Mono<String> startPing(RSocketRequester clientRSocketConnection){
+
+        Flux<String> pongSignal =
+                Flux.fromStream(Stream.generate(() -> "ping")).delayElements(Duration.ofMillis(2000));
+        clientRSocketConnection
+                .route("amAlive")
+                .data(pongSignal)
+                .retrieveFlux(ClientHealthState.class)
+                .doOnNext(chs -> log.info(chs)).subscribe();
 
         return Mono.just("start ping ok!");
     }
