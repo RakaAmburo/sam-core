@@ -96,7 +96,7 @@ class GreetingController {
                 .data(pongSignal)
                 .retrieveFlux(ClientHealthState.class)
                 .filter(chs -> !chs.isHealthy())
-                .doOnNext(chs -> log.info("not healthy! "));
+                .doOnNext(chs -> log.info("not healthy! ")).subscribe();
 
         return Mono.just("start ping ok!");
     }
