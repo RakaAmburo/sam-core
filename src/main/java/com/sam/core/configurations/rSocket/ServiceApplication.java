@@ -91,9 +91,7 @@ class GreetingController {
 
         return Flux.create(
                 (FluxSink<BigRequest> sink) -> {
-                    settings.doFirst(()->{
-                        pong(clientRSocketConnection);
-                    })
+                    settings
                             .doOnNext(
                                     i -> {
                                         sink.next(i);
