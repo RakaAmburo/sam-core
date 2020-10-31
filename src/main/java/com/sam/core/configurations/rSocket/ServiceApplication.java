@@ -94,7 +94,7 @@ class GreetingController {
         clientRSocketConnection
                 .route("amAlive")
                 .data(pongSignal)
-                .retrieveFlux(ClientHealthState.class)
+                .retrieveFlux(String.class)
                 .doOnNext(chs -> log.info(chs)).subscribe();
 
         return Mono.just("start ping ok!");
