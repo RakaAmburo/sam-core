@@ -92,7 +92,7 @@ class GreetingController {
         Flux<String> pongSignal =
                 Flux.fromStream(Stream.generate(() -> "ping")).delayElements(Duration.ofMillis(2000));
         clientRSocketConnection
-                .route("sam-gateway/amAlive")
+                .route("alive")
                 .data(pongSignal)
                 .retrieveFlux(String.class)
                 .doOnNext(chs -> log.info(chs)).subscribe();
