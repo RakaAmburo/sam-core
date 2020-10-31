@@ -92,7 +92,7 @@ class GreetingController {
         Flux<String> pongSignal =
                 Flux.fromStream(Stream.generate(() -> "ping")).delayElements(Duration.ofMillis(2000));
         clientRSocketConnection
-                .route("amAlive")
+                .route("sam-gateway/amAlive")
                 .data(pongSignal)
                 .retrieveFlux(String.class)
                 .doOnNext(chs -> log.info(chs)).subscribe();
@@ -132,7 +132,6 @@ class GreetingController {
 
 
     }
-
 
     @MessageMapping("startAmAlive")
     public Flux<String> startAmAlive(Flux<String> ping) {
