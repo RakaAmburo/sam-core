@@ -17,6 +17,7 @@ import org.springframework.security.core.userdetails.User;
 import org.springframework.security.messaging.handler.invocation.reactive.AuthenticationPrincipalArgumentResolver;
 import org.springframework.security.rsocket.core.PayloadSocketAcceptorInterceptor;
 import org.springframework.stereotype.Controller;
+import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.FluxSink;
 import reactor.core.publisher.Mono;
@@ -86,12 +87,17 @@ class GreetingController {
 
     private static BlockingQueue<BigRequest> queue = new LinkedBlockingDeque<>();
 
+    private Disposable ping;
+
     @MessageMapping("startPing")
     Mono<String> startPing(RSocketRequester clientRSocketConnection){
 
         Flux<String> pongSignal =
                 Flux.fromStream(Stream.generate(() -> "ping")).delayElements(Duration.ofMillis(1000));
-        clientRSocketConnection
+        if (ping != null){
+            ping.dispose();
+        }
+        ping  = clientRSocketConnection
                 .route("health")
                 .data(pongSignal)
                 .retrieveFlux(ClientHealthState.class)
