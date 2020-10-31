@@ -21,6 +21,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.FluxSink;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.BlockingQueue;
@@ -87,24 +88,18 @@ class GreetingController {
     @MessageMapping("channel")
     Flux<BigRequest> channel(RSocketRequester clientRSocketConnection, Flux<BigRequest> settings) {
 
-        Flux<String> pongSignal =
-                Flux.fromStream(Stream.generate(() -> "ping")).delayElements(Duration.ofMillis(1000));
-        var clientHealth = clientRSocketConnection
-                .route("amAlive")
-                .data(pongSignal)
-                .retrieveFlux(String.class)
-                .doOnNext(chs -> log.info(chs))
-                .filter(ping -> ping.isEmpty());
 
         return Flux.create(
                 (FluxSink<BigRequest> sink) -> {
-                    settings
+                    settings.doFirst(()->{
+                        pong(clientRSocketConnection);
+                    })
                             .doOnNext(
                                     i -> {
                                         sink.next(i);
                                     })
                             .subscribe();
-                }).takeUntilOther(clientHealth);
+                });
     }
 
     private void pong(
@@ -120,6 +115,7 @@ class GreetingController {
                         //.data(pongSignal)
                         .retrieveFlux(String.class)
                         .doOnNext(chs -> log.info(chs)).subscribe();
+
 
 
     }
