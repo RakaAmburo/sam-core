@@ -96,11 +96,9 @@ class GreetingController {
     Flux<String> startPing(){
 
 
-
         Flux<String> pingSignal =
                 Flux.fromStream(Stream.generate(() -> "ping")).delayElements(Duration.ofMillis(1000));
         //clientRSocketConnection.rsocket().dispose();
-
 
         /*ping  = clientRSocketConnection
                 .route("health")
