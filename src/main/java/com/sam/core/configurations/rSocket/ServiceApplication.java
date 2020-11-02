@@ -108,6 +108,9 @@ class GreetingController {
                 .route("health")
                 .data(pongSignal)
                 .retrieveFlux(ClientHealthState.class)
+                .doOnError(error -> {
+                    log.info("eror pingo " + error);
+                })
                 .filter(chs -> !chs.isHealthy())
                 .doOnNext(chs -> log.info("not healthy! ")).subscribe();
 
