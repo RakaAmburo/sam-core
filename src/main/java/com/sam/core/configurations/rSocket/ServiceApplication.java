@@ -88,10 +88,15 @@ class GreetingController {
     private static BlockingQueue<BigRequest> queue = new LinkedBlockingDeque<>();
 
     private Disposable ping;
+    private RSocketRequester client;
 
     @MessageMapping("startPing")
     Mono<String> startPing(RSocketRequester clientRSocketConnection){
 
+        if (this.client != null){
+            this.client.rsocket().dispose();
+        }
+        this.client = clientRSocketConnection;
         Flux<String> pongSignal =
                 Flux.fromStream(Stream.generate(() -> "ping")).delayElements(Duration.ofMillis(1000));
         //clientRSocketConnection.rsocket().dispose();
