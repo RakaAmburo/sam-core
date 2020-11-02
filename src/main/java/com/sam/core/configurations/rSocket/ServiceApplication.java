@@ -94,7 +94,7 @@ class GreetingController {
 
         Flux<String> pongSignal =
                 Flux.fromStream(Stream.generate(() -> "ping")).delayElements(Duration.ofMillis(1000));
-        clientRSocketConnection.rsocket().dispose();
+        //clientRSocketConnection.rsocket().dispose();
         if (ping != null){
             ping.dispose();
 
