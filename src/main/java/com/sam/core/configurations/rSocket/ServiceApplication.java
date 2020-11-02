@@ -1,9 +1,11 @@
 package com.sam.core.configurations.rSocket;
 
+import io.rsocket.RSocketFactory;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.extern.log4j.Log4j2;
+import org.springframework.boot.rsocket.server.RSocketServerFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.messaging.handler.annotation.MessageMapping;
@@ -91,20 +93,22 @@ class GreetingController {
     private RSocketRequester client;
 
     @MessageMapping("startPing")
-    Mono<String> startPing(RSocketRequester clientRSocketConnection){
+    Flux<String> startPing(RSocketRequester clientRSocketConnection){
+
 
         if (this.client != null){
             this.client.rsocket().dispose();
         }
         this.client = clientRSocketConnection;
-        Flux<String> pongSignal =
+        Flux<String> pingSignal =
                 Flux.fromStream(Stream.generate(() -> "ping")).delayElements(Duration.ofMillis(1000));
         //clientRSocketConnection.rsocket().dispose();
         if (ping != null){
             ping.dispose();
 
         }
-        ping  = clientRSocketConnection
+
+        /*ping  = clientRSocketConnection
                 .route("health")
                 .data(pongSignal)
                 .retrieveFlux(ClientHealthState.class)
@@ -112,9 +116,9 @@ class GreetingController {
                     log.info("eror pingo " + error);
                 })
                 .filter(chs -> !chs.isHealthy())
-                .doOnNext(chs -> log.info("not healthy! ")).subscribe();
+                .doOnNext(chs -> log.info("not healthy! ")).subscribe();*/
 
-        return Mono.just("start ping ok!");
+        return pingSignal;
     }
 
     @MessageMapping("channel")
