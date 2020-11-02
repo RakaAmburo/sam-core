@@ -93,20 +93,14 @@ class GreetingController {
     private RSocketRequester client;
 
     @MessageMapping("startPing")
-    Flux<String> startPing(RSocketRequester clientRSocketConnection){
+    Flux<String> startPing(){
 
 
-        if (this.client != null){
-            this.client.rsocket().dispose();
-        }
-        this.client = clientRSocketConnection;
+
         Flux<String> pingSignal =
                 Flux.fromStream(Stream.generate(() -> "ping")).delayElements(Duration.ofMillis(1000));
         //clientRSocketConnection.rsocket().dispose();
-        if (ping != null){
-            ping.dispose();
 
-        }
 
         /*ping  = clientRSocketConnection
                 .route("health")
