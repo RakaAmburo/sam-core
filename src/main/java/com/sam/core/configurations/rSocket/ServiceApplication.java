@@ -1,11 +1,9 @@
 package com.sam.core.configurations.rSocket;
 
-import io.rsocket.RSocketFactory;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.extern.log4j.Log4j2;
-import org.springframework.boot.rsocket.server.RSocketServerFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.messaging.handler.annotation.MessageMapping;
@@ -22,10 +20,8 @@ import org.springframework.stereotype.Controller;
 import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.FluxSink;
-import reactor.core.publisher.Mono;
 
 import java.time.Duration;
-import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.BlockingQueue;
@@ -93,7 +89,7 @@ class GreetingController {
     private RSocketRequester client;
 
     @MessageMapping("startPing")
-    Flux<String> startPing(){
+    Flux<String> startPing() {
 
 
         Flux<String> pingSignal =
@@ -116,7 +112,7 @@ class GreetingController {
     @MessageMapping("channel")
     Flux<BigRequest> channel(RSocketRequester clientRSocketConnection, Flux<BigRequest> settings) {
 
-
+        System.out.println("instanciamos");
         return Flux.create(
                 (FluxSink<BigRequest> sink) -> {
                     settings
@@ -141,7 +137,6 @@ class GreetingController {
                         //.data(pongSignal)
                         .retrieveFlux(String.class)
                         .doOnNext(chs -> log.info(chs)).subscribe();
-
 
 
     }
