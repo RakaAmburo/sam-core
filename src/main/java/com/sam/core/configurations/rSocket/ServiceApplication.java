@@ -1,5 +1,6 @@
 package com.sam.core.configurations.rSocket;
 
+import com.sam.core.entities.Container;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -20,12 +21,12 @@ import org.springframework.stereotype.Controller;
 import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.FluxSink;
+import reactor.core.publisher.UnicastProcessor;
 
 import java.time.Duration;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingDeque;
 import java.util.stream.Stream;
 
 
@@ -56,21 +57,6 @@ class SecurityConfiguration {
     }
 }
 
-// DTO
-@Data
-@AllArgsConstructor
-@NoArgsConstructor
-class GreetingResponse {
-    private String message;
-}
-
-@Data
-@AllArgsConstructor
-@NoArgsConstructor
-class GreetingRequest {
-    private String name;
-}
-
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
@@ -83,7 +69,11 @@ class BigRequest {
 @Log4j2
 class GreetingController {
 
-    private static BlockingQueue<BigRequest> queue = new LinkedBlockingDeque<>();
+    private LinkedList<Container> queue = new LinkedList<>();
+    private UnicastProcessor<BigRequest> requestStream;
+    private UnicastProcessor<BigRequest> responseStream;
+    private FluxSink<BigRequest> requestSink;
+    private FluxSink<BigRequest> responseSink;
 
     private Disposable ping;
     private RSocketRequester client;
@@ -94,28 +84,29 @@ class GreetingController {
 
         Flux<String> pingSignal =
                 Flux.fromStream(Stream.generate(() -> "ping")).delayElements(Duration.ofMillis(1000));
-        //clientRSocketConnection.rsocket().dispose();
 
-        /*ping  = clientRSocketConnection
-                .route("health")
-                .data(pongSignal)
-                .retrieveFlux(ClientHealthState.class)
-                .doOnError(error -> {
-                    log.info("eror pingo " + error);
-                })
-                .filter(chs -> !chs.isHealthy())
-                .doOnNext(chs -> log.info("not healthy! ")).subscribe();*/
 
         return pingSignal;
     }
 
     @MessageMapping("channel")
-    Flux<BigRequest> channel(RSocketRequester clientRSocketConnection, Flux<BigRequest> settings) {
+    Flux<BigRequest> channel(RSocketRequester clientRSocketConnection, Flux<BigRequest> bigRequestFlux) {
 
         System.out.println("instanciamos");
+
+        /*bigRequestFlux.doOnNext(bigRequest -> {
+            synchronized (this) {
+                this.queue.add(new Container());
+                this.requestSink.next(bigRequest);
+            }
+        });
+
+        return responseStream;*/
+
+
         return Flux.create(
                 (FluxSink<BigRequest> sink) -> {
-                    settings
+                    bigRequestFlux
                             .doOnNext(
                                     i -> {
                                         sink.next(i);
@@ -123,37 +114,4 @@ class GreetingController {
                             .subscribe();
                 });
     }
-
-    private void pong(
-            RSocketRequester clientRSocketConnection) {
-
-        log.info("entra en el ping");
-        Flux<String> pongSignal =
-                Flux.fromStream(Stream.generate(() -> "ping")).delayElements(Duration.ofMillis(1000));
-
-        var clientHealth =
-                clientRSocketConnection
-                        .route("amAlive")
-                        //.data(pongSignal)
-                        .retrieveFlux(String.class)
-                        .doOnNext(chs -> log.info(chs)).subscribe();
-
-
-    }
-
-    @MessageMapping("startAmAlive")
-    public Flux<String> startAmAlive(Flux<String> ping) {
-        log.info("alive entering: ");
-        Flux<String> pingSignal =
-                Flux.fromStream(Stream.generate(() -> "pong")).delayElements(Duration.ofMillis(1500));
-
-        return pingSignal;
-    }
-}
-
-@Data
-@AllArgsConstructor
-@NoArgsConstructor
-class ClientHealthState {
-    private boolean healthy;
 }
