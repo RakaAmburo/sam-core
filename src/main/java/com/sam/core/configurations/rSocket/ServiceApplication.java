@@ -266,7 +266,7 @@ class GreetingController {
                 }
 
                 getRSocketRequester();
-                startPing();
+                startPingOut();
             }
 
 
