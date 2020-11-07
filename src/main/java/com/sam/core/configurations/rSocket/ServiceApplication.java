@@ -1,5 +1,6 @@
 package com.sam.core.configurations.rSocket;
 
+import com.sam.core.entities.BigRequest;
 import com.sam.core.entities.Container;
 import io.rsocket.frame.decoder.PayloadDecoder;
 import io.rsocket.metadata.WellKnownMimeType;
@@ -75,13 +76,6 @@ class SecurityConfiguration {
     }
 }
 
-@Data
-@AllArgsConstructor
-@NoArgsConstructor
-class BigRequest {
-    private UUID id;
-    private List<UUID> requests;
-}
 
 @Controller
 @Log4j2
@@ -120,8 +114,12 @@ class GreetingController {
         System.out.println("instanciamos");
 
         bigRequestFlux.doOnNext(bigRequest -> {
+            responseStream = UnicastProcessor.create();
+            this.responseSink = responseStream.sink();
+            Container container = new Container(this.responseSink);
+
             synchronized (this) {
-                this.queue.add(new Container());
+                this.queue.add(container);
                 this.requestSink.next(bigRequest);
             }
         });
@@ -228,8 +226,7 @@ class GreetingController {
                                 })
                         .doOnNext(
                                 bigRequest -> {
-                                    responseSink.next(bigRequest);
-                                    //queue.pop().getMonoSink().success(bigRequest);
+                                    queue.pop().getSink().next(bigRequest);
                                     // System.out.println("ID: " + bigRequest.getId());
                                 })
                         .subscribe();
