@@ -214,7 +214,7 @@ class GreetingController {
 
         connection =
                 this.client
-                        .route("channel")
+                        .route("mongoChannel")
                         .metadata(this.credentials, this.mimeType)
                         // .data(Mono.empty())
                         .data(requestStream)
