@@ -8,6 +8,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.rsocket.messaging.RSocketStrategiesCustomizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.messaging.handler.annotation.MessageMapping;
@@ -20,6 +21,7 @@ import org.springframework.security.core.userdetails.MapReactiveUserDetailsServi
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.messaging.handler.invocation.reactive.AuthenticationPrincipalArgumentResolver;
 import org.springframework.security.rsocket.core.PayloadSocketAcceptorInterceptor;
+import org.springframework.security.rsocket.metadata.SimpleAuthenticationEncoder;
 import org.springframework.security.rsocket.metadata.UsernamePasswordMetadata;
 import org.springframework.stereotype.Controller;
 import org.springframework.util.MimeType;
@@ -65,6 +67,11 @@ class SecurityConfiguration {
                 .addCustomResolver(new AuthenticationPrincipalArgumentResolver());
         rmh.setRSocketStrategies(strategies);
         return rmh;
+    }
+
+    @Bean
+    RSocketStrategiesCustomizer strategiesCustomizer() {
+        return strategies -> strategies.encoder(new SimpleAuthenticationEncoder());
     }
 }
 
