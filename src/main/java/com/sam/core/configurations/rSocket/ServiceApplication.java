@@ -1,10 +1,13 @@
 package com.sam.core.configurations.rSocket;
 
 import com.sam.core.entities.Container;
+import io.rsocket.frame.decoder.PayloadDecoder;
+import io.rsocket.metadata.WellKnownMimeType;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.extern.log4j.Log4j2;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.messaging.handler.annotation.MessageMapping;
@@ -17,16 +20,24 @@ import org.springframework.security.core.userdetails.MapReactiveUserDetailsServi
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.messaging.handler.invocation.reactive.AuthenticationPrincipalArgumentResolver;
 import org.springframework.security.rsocket.core.PayloadSocketAcceptorInterceptor;
+import org.springframework.security.rsocket.metadata.UsernamePasswordMetadata;
 import org.springframework.stereotype.Controller;
+import org.springframework.util.MimeType;
+import org.springframework.util.MimeTypeUtils;
 import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.FluxSink;
+import reactor.core.publisher.Mono;
 import reactor.core.publisher.UnicastProcessor;
+import reactor.util.retry.Retry;
 
 import java.time.Duration;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 
 
@@ -77,6 +88,13 @@ class GreetingController {
 
     private Disposable ping;
     private RSocketRequester client;
+    private ScheduledExecutorService shutDown = Executors.newSingleThreadScheduledExecutor();
+
+    public GreetingController(RSocketRequester.Builder rSocketBuilder){
+         this.rSocketBuilder = rSocketBuilder;
+        this.shutDown.scheduleAtFixedRate(this.checkServerPing(), 1000, 1000, TimeUnit.MILLISECONDS);
+
+    }
 
     @MessageMapping("startPing")
     Flux<String> startPing() {
@@ -94,17 +112,17 @@ class GreetingController {
 
         System.out.println("instanciamos");
 
-        /*bigRequestFlux.doOnNext(bigRequest -> {
+        bigRequestFlux.doOnNext(bigRequest -> {
             synchronized (this) {
                 this.queue.add(new Container());
                 this.requestSink.next(bigRequest);
             }
         });
 
-        return responseStream;*/
+        return responseStream;
 
 
-        return Flux.create(
+       /* return Flux.create(
                 (FluxSink<BigRequest> sink) -> {
                     bigRequestFlux
                             .doOnNext(
@@ -112,6 +130,139 @@ class GreetingController {
                                         sink.next(i);
                                     })
                             .subscribe();
-                });
+                });*/
+    }
+
+    private Disposable connection;
+    private final UsernamePasswordMetadata credentials = new UsernamePasswordMetadata("jlong", "pw");
+    private final MimeType mimeType =
+            MimeTypeUtils.parseMimeType(WellKnownMimeType.MESSAGE_RSOCKET_AUTHENTICATION.getString());
+    private RSocketRequester.Builder rSocketBuilder;
+    private Disposable pingSubscription;
+    private boolean connected = false;
+    private boolean connecting = false;
+    private Long pingTime = 0L;
+
+    @Value("${core.RSocket.host:localhost}")
+    private String coreRSocketHost;
+
+    @Value("${core.RSocket.port:8888}")
+    private Integer coreRSocketPort;
+
+    private void startPingOut() {
+        pingSubscription =
+                client
+                        .route("startPing")
+                        .metadata(this.credentials, this.mimeType)
+                        .data(Mono.empty())
+                        .retrieveFlux(String.class)
+                        .doOnNext(
+                                ping -> {
+                                    if (!connected){
+                                        System.out.println("pinging now connecting");
+                                        connect();
+                                        connected = true;
+                                        connecting = false;
+                                    }
+                                    pingTime = System.currentTimeMillis();
+                                })
+                        .subscribe();
+    }
+
+    private void getRSocketRequester() {
+        this.client =
+                this.rSocketBuilder
+                        .setupMetadata(this.credentials, this.mimeType)
+                        // .rsocketConnector(connector -> connector.acceptor(acceptor))
+                        .rsocketConnector(
+                                connector -> {
+                                    //connector.acceptor(acceptor);
+                                    connector.payloadDecoder(PayloadDecoder.ZERO_COPY);
+                                    //connector.reconnect(Retry.fixedDelay(Integer.MAX_VALUE, Duration.ofSeconds(1)));
+                                })
+                        // .reconnect(Retry.fixedDelay(Integer.MAX_VALUE, Duration.ofSeconds(5)))
+                        .connectTcp(coreRSocketHost, coreRSocketPort)
+                        .doOnSuccess(
+                                success -> {
+                                    System.out.println("Socket Connected!");
+                                })
+                        .doOnError(
+                                error -> {
+                                    System.out.println(error);
+                                })
+                        .retryWhen(
+                                Retry.fixedDelay(Integer.MAX_VALUE, Duration.ofSeconds(1))
+                                        .doAfterRetry(
+                                                signal -> {
+                                                    // log.info("Retrying times:  " + signal.totalRetriesInARow());
+                                                }))
+                        .block();
+    }
+
+    private void connect() {
+        if (this.requestStream != null) {
+            requestStream.sink().complete();
+            requestStream = null;
+        }
+        requestStream = UnicastProcessor.create();
+        this.requestSink = requestStream.sink();
+
+        connection =
+                this.client
+                        .route("channel")
+                        .metadata(this.credentials, this.mimeType)
+                        // .data(Mono.empty())
+                        .data(requestStream)
+                        .retrieveFlux(BigRequest.class)
+                        .retryWhen(Retry.fixedDelay(Integer.MAX_VALUE, Duration.ofSeconds(1)))
+                        .doOnError(
+                                error -> {
+                                    System.out.println("Error sending data: " + error);
+                                })
+                        .doOnNext(
+                                bigRequest -> {
+                                    responseSink.next(bigRequest);
+                                    //queue.pop().getMonoSink().success(bigRequest);
+                                    // System.out.println("ID: " + bigRequest.getId());
+                                })
+                        .subscribe();
+    }
+
+    public Runnable checkServerPing() {
+        return () -> {
+            // System.out.println("QUEUE SIZE = " + this.queue.size());
+            if (connected) {
+                Long now = System.currentTimeMillis();
+                Long diff = now - pingTime;
+
+                if (diff > 1200) {
+                    System.out.println(diff + " too long diff, reconnecting!");
+                    connected = false;
+                }
+            }
+
+            if (!connected && !connecting) {
+                connecting = true;
+                System.out.println("connecting process");
+                if (this.client != null) {
+                    this.client.rsocket().dispose();
+                    this.client = null;
+                }
+                if (connection != null) {
+                    connection.dispose();
+                    connection = null;
+                }
+
+                if (pingSubscription != null) {
+                    pingSubscription.dispose();
+                    pingSubscription = null;
+                }
+
+                getRSocketRequester();
+                startPing();
+            }
+
+
+        };
     }
 }
