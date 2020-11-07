@@ -83,9 +83,7 @@ class GreetingController {
 
     private LinkedList<Container> queue = new LinkedList<>();
     private UnicastProcessor<BigRequest> requestStream;
-    private UnicastProcessor<BigRequest> responseStream;
     private FluxSink<BigRequest> requestSink;
-    private FluxSink<BigRequest> responseSink;
 
     private Disposable ping;
     private RSocketRequester client;
@@ -112,12 +110,12 @@ class GreetingController {
     Flux<BigRequest> channel(RSocketRequester clientRSocketConnection, Flux<BigRequest> bigRequestFlux) {
 
         System.out.println("instanciamos");
+        UnicastProcessor<BigRequest> responseStream = UnicastProcessor.create();
+        FluxSink<BigRequest> responseSink = responseStream.sink();
 
         bigRequestFlux.doOnNext(bigRequest -> {
-            responseStream = UnicastProcessor.create();
-            this.responseSink = responseStream.sink();
-            Container container = new Container(this.responseSink);
 
+            Container container = new Container(responseSink);
             synchronized (this) {
                 this.queue.add(container);
                 this.requestSink.next(bigRequest);
