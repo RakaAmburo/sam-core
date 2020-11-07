@@ -110,7 +110,7 @@ class GreetingController {
     Flux<BigRequest> channel(RSocketRequester clientRSocketConnection, Flux<BigRequest> bigRequestFlux) {
 
         System.out.println("instanciamos");
-        /*UnicastProcessor<BigRequest> responseStream = UnicastProcessor.create();
+        UnicastProcessor<BigRequest> responseStream = UnicastProcessor.create();
         FluxSink<BigRequest> responseSink = responseStream.sink();
 
         bigRequestFlux.doOnNext(bigRequest -> {
@@ -121,12 +121,12 @@ class GreetingController {
                 this.queue.add(container);
                 this.requestSink.next(bigRequest);
             }
-        });
+        }).subscribe();
 
-        return responseStream;*/
+        return responseStream;
 
 
-        return Flux.create(
+        /*return Flux.create(
                 (FluxSink<BigRequest> sink) -> {
                     bigRequestFlux
                             .doOnNext(
@@ -135,7 +135,7 @@ class GreetingController {
                                         sink.next(i);
                                     })
                             .subscribe();
-                });
+                });*/
     }
 
     private Disposable connection;
