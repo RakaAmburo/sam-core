@@ -109,7 +109,7 @@ class GreetingController {
     @MessageMapping("channel")
     Flux<BigRequest> channel(RSocketRequester clientRSocketConnection, Flux<BigRequest> bigRequestFlux) {
 
-        System.out.println("instanciamos");
+        System.out.println("channel connect to mongo");
         UnicastProcessor<BigRequest> responseStream = UnicastProcessor.create();
         FluxSink<BigRequest> responseSink = responseStream.sink();
 
