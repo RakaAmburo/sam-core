@@ -117,7 +117,7 @@ class GreetingController {
 
             Container container = new Container(responseSink);
             synchronized (this) {
-                System.out.println("enviamos al mongo");
+                //System.out.println("enviamos al mongo");
                 this.queue.add(container);
                 this.requestSink.next(bigRequest);
             }
