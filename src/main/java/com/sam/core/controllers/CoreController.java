@@ -1,28 +1,13 @@
-package com.sam.core.configurations.rSocket;
+package com.sam.core.controllers;
 
 import com.sam.commons.entities.BigRequest;
 import com.sam.core.entities.Container;
 import io.rsocket.frame.decoder.PayloadDecoder;
 import io.rsocket.metadata.WellKnownMimeType;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.rsocket.messaging.RSocketStrategiesCustomizer;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.rsocket.RSocketRequester;
-import org.springframework.messaging.rsocket.RSocketStrategies;
-import org.springframework.messaging.rsocket.annotation.support.RSocketMessageHandler;
-import org.springframework.security.config.Customizer;
-import org.springframework.security.config.annotation.rsocket.RSocketSecurity;
-import org.springframework.security.core.userdetails.MapReactiveUserDetailsService;
-import org.springframework.security.core.userdetails.User;
-import org.springframework.security.messaging.handler.invocation.reactive.AuthenticationPrincipalArgumentResolver;
-import org.springframework.security.rsocket.core.PayloadSocketAcceptorInterceptor;
-import org.springframework.security.rsocket.metadata.SimpleAuthenticationEncoder;
 import org.springframework.security.rsocket.metadata.UsernamePasswordMetadata;
 import org.springframework.stereotype.Controller;
 import org.springframework.util.MimeType;
@@ -36,61 +21,36 @@ import reactor.util.retry.Retry;
 
 import java.time.Duration;
 import java.util.LinkedList;
-import java.util.List;
-import java.util.UUID;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 
-
-@Configuration
-class SecurityConfiguration {
-
-    @Bean
-    PayloadSocketAcceptorInterceptor interceptor(RSocketSecurity security) {
-        return security
-                .simpleAuthentication(Customizer.withDefaults())
-                .authorizePayload(ap -> ap.anyExchange().authenticated())
-                .build();
-    }
-
-    @Bean
-    MapReactiveUserDetailsService authentication() {
-        return new MapReactiveUserDetailsService(
-                User.withDefaultPasswordEncoder().username("jlong").password("pw").roles("USER").build());
-    }
-
-    @Bean
-    RSocketMessageHandler messageHandler(RSocketStrategies strategies) {
-        var rmh = new RSocketMessageHandler();
-        rmh.getArgumentResolverConfigurer()
-                .addCustomResolver(new AuthenticationPrincipalArgumentResolver());
-        rmh.setRSocketStrategies(strategies);
-        return rmh;
-    }
-
-    @Bean
-    RSocketStrategiesCustomizer strategiesCustomizer() {
-        return strategies -> strategies.encoder(new SimpleAuthenticationEncoder());
-    }
-}
-
-
 @Controller
 @Log4j2
-class GreetingController {
+class CoreController {
 
+    private final UsernamePasswordMetadata credentials = new UsernamePasswordMetadata("jlong", "pw");
+    private final MimeType mimeType =
+            MimeTypeUtils.parseMimeType(WellKnownMimeType.MESSAGE_RSOCKET_AUTHENTICATION.getString());
     private LinkedList<Container> queue = new LinkedList<>();
     private UnicastProcessor<BigRequest> requestStream;
     private FluxSink<BigRequest> requestSink;
-
     private Disposable ping;
     private RSocketRequester client;
     private ScheduledExecutorService shutDown = Executors.newSingleThreadScheduledExecutor();
-
-    public GreetingController(RSocketRequester.Builder rSocketBuilder){
-         this.rSocketBuilder = rSocketBuilder;
+    private Disposable connection;
+    private RSocketRequester.Builder rSocketBuilder;
+    private Disposable pingSubscription;
+    private boolean connected = false;
+    private boolean connecting = false;
+    private Long pingTime = 0L;
+    @Value("${core.RSocket.host:localhost}")
+    private String coreRSocketHost;
+    @Value("${core.RSocket.port:8888}")
+    private Integer coreRSocketPort;
+    public CoreController(RSocketRequester.Builder rSocketBuilder) {
+        this.rSocketBuilder = rSocketBuilder;
         this.shutDown.scheduleAtFixedRate(this.checkServerPing(), 1000, 1000, TimeUnit.MILLISECONDS);
 
     }
@@ -138,22 +98,6 @@ class GreetingController {
                 });*/
     }
 
-    private Disposable connection;
-    private final UsernamePasswordMetadata credentials = new UsernamePasswordMetadata("jlong", "pw");
-    private final MimeType mimeType =
-            MimeTypeUtils.parseMimeType(WellKnownMimeType.MESSAGE_RSOCKET_AUTHENTICATION.getString());
-    private RSocketRequester.Builder rSocketBuilder;
-    private Disposable pingSubscription;
-    private boolean connected = false;
-    private boolean connecting = false;
-    private Long pingTime = 0L;
-
-    @Value("${core.RSocket.host:localhost}")
-    private String coreRSocketHost;
-
-    @Value("${core.RSocket.port:8888}")
-    private Integer coreRSocketPort;
-
     private void startPingOut() {
         pingSubscription =
                 client
@@ -163,7 +107,7 @@ class GreetingController {
                         .retrieveFlux(String.class)
                         .doOnNext(
                                 ping -> {
-                                    if (!connected){
+                                    if (!connected) {
                                         System.out.println("pinging now connecting");
                                         connect();
                                         connected = true;
