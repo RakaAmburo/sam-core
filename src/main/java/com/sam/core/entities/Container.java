@@ -1,5 +1,6 @@
 package com.sam.core.entities;
 
+import com.sam.commons.entities.BigRequest;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;

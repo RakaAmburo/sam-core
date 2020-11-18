@@ -1,6 +1,6 @@
 package com.sam.core.configurations.rSocket;
 
-import com.sam.core.entities.BigRequest;
+import com.sam.commons.entities.BigRequest;
 import com.sam.core.entities.Container;
 import io.rsocket.frame.decoder.PayloadDecoder;
 import io.rsocket.metadata.WellKnownMimeType;
