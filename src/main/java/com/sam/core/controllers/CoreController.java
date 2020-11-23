@@ -1,6 +1,7 @@
 package com.sam.core.controllers;
 
 import com.sam.commons.entities.BigRequest;
+import com.sam.commons.entities.MenuItemReq;
 import com.sam.core.entities.Container;
 import io.rsocket.frame.decoder.PayloadDecoder;
 import io.rsocket.metadata.WellKnownMimeType;
@@ -33,13 +34,17 @@ class CoreController {
   private final UsernamePasswordMetadata credentials = new UsernamePasswordMetadata("jlong", "pw");
   private final MimeType mimeType =
       MimeTypeUtils.parseMimeType(WellKnownMimeType.MESSAGE_RSOCKET_AUTHENTICATION.getString());
-  private LinkedList<Container> queue = new LinkedList<>();
+  private LinkedList<Container<BigRequest>> queue = new LinkedList<>();
+  private LinkedList<Container<MenuItemReq>> menuItemQueue = new LinkedList<>();
   private UnicastProcessor<BigRequest> requestStream;
+  private UnicastProcessor<MenuItemReq> menuItemReqStr;
   private FluxSink<BigRequest> requestSink;
+  private FluxSink<MenuItemReq> menuItemReqStrSink;
   private Disposable ping;
   private RSocketRequester client;
   private ScheduledExecutorService shutDown = Executors.newSingleThreadScheduledExecutor();
   private Disposable connection;
+  private Disposable menuItemReqConnection;
   private RSocketRequester.Builder rSocketBuilder;
   private Disposable pingSubscription;
   private boolean connected = false;
@@ -67,7 +72,7 @@ class CoreController {
   }
 
   @MessageMapping("channel")
-  Flux<BigRequest> channel(
+  public Flux<BigRequest> channel(
       RSocketRequester clientRSocketConnection, Flux<BigRequest> bigRequestFlux) {
 
     System.out.println("channel connect to mongo");
@@ -77,7 +82,7 @@ class CoreController {
     bigRequestFlux
         .doOnNext(
             bigRequest -> {
-              Container container = new Container(responseSink);
+              Container<BigRequest> container = new Container(responseSink);
               synchronized (this) {
                 // System.out.println("enviamos al mongo");
                 this.queue.add(container);
@@ -85,6 +90,26 @@ class CoreController {
               }
             })
         .subscribe();
+
+    return responseStream;
+  }
+  @MessageMapping("menuItemReqChannel")
+  public Flux<MenuItemReq> menuItemReqChannel(Flux<MenuItemReq> menuItemFlux){
+    System.out.println("channel connect to menuitem mongo");
+    UnicastProcessor<MenuItemReq> responseStream = UnicastProcessor.create();
+    FluxSink<MenuItemReq> responseSink = responseStream.sink();
+
+    menuItemFlux
+            .doOnNext(
+                    bigRequest -> {
+                      Container<MenuItemReq> container = new Container(responseSink);
+                      synchronized (this) {
+                        // System.out.println("enviamos al mongo");
+                        this.menuItemQueue.add(container);
+                        this.menuItemReqStrSink.next(bigRequest);
+                      }
+                    })
+            .subscribe();
 
     return responseStream;
   }
@@ -101,6 +126,7 @@ class CoreController {
                   if (!connected) {
                     System.out.println("pinging now connecting");
                     connect();
+                    connectMenuitem();
                     connected = true;
                     connecting = false;
                   }
@@ -138,6 +164,29 @@ class CoreController {
                           // log.info("Retrying times:  " + signal.totalRetriesInARow());
                         }))
             .block();
+  }
+
+  private void connectMenuitem() {
+    if (this.menuItemReqStr != null) {
+      this.menuItemReqStr.sink().complete();
+      this.menuItemReqStr = null;
+    }
+    this.menuItemReqStr = UnicastProcessor.create();
+    this.menuItemReqStrSink = this.menuItemReqStr.sink();
+
+    menuItemReqConnection =
+        this.client
+            .route("")
+            .metadata(this.credentials, this.mimeType)
+            .data(menuItemReqStr)
+            .retrieveFlux(MenuItemReq.class)
+            .retryWhen(Retry.fixedDelay(Integer.MAX_VALUE, Duration.ofSeconds(1)))
+            .doOnNext(
+                request -> {
+                  menuItemQueue.pop().getSink().next(request);
+                  // System.out.println("ID: " + bigRequest.getId());
+                })
+            .subscribe();
   }
 
   private void connect() {

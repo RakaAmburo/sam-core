@@ -9,6 +9,6 @@ import reactor.core.publisher.FluxSink;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class Container {
-    private FluxSink<BigRequest> sink;
+public class Container<T> {
+    private FluxSink<T> sink;
 }
