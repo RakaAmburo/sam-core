@@ -104,7 +104,7 @@ class CoreController {
                     bigRequest -> {
                       Container<MenuItemReq> container = new Container(responseSink);
                       synchronized (this) {
-                        // System.out.println("enviamos al mongo");
+                        System.out.println("enviamos al mongo");
                         this.menuItemQueue.add(container);
                         this.menuItemReqStrSink.next(bigRequest);
                       }
