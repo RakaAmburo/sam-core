@@ -176,7 +176,7 @@ class CoreController {
 
     menuItemReqConnection =
         this.client
-            .route("")
+            .route("menuItemChannel")
             .metadata(this.credentials, this.mimeType)
             .data(menuItemReqStr)
             .retrieveFlux(MenuItemReq.class)
