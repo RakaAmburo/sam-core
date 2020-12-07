@@ -48,6 +48,7 @@ class CoreController {
   private ScheduledExecutorService shutDown = Executors.newSingleThreadScheduledExecutor();
   private Disposable connection;
   private Disposable menuItemReqConnection;
+  private Disposable deleteMenuItemReqConnection;
   private RSocketRequester.Builder rSocketBuilder;
   private Disposable pingSubscription;
   private boolean connected = false;
@@ -216,7 +217,7 @@ class CoreController {
     this.deleteMenuItemReqStr = UnicastProcessor.create();
     this.deleteMenuItemReqStrSink = this.deleteMenuItemReqStr.sink();
 
-    menuItemReqConnection =
+    deleteMenuItemReqConnection =
         this.client
             .route("deleteMenuItemChannel")
             .metadata(this.credentials, this.mimeType)
@@ -281,6 +282,16 @@ class CoreController {
         if (connection != null) {
           connection.dispose();
           connection = null;
+        }
+
+        if (menuItemReqConnection != null) {
+          menuItemReqConnection.dispose();
+          menuItemReqConnection = null;
+        }
+
+        if (deleteMenuItemReqConnection != null) {
+          deleteMenuItemReqConnection.dispose();
+          deleteMenuItemReqConnection = null;
         }
 
         if (pingSubscription != null) {
