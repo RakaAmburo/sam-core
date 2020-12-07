@@ -36,10 +36,13 @@ class CoreController {
       MimeTypeUtils.parseMimeType(WellKnownMimeType.MESSAGE_RSOCKET_AUTHENTICATION.getString());
   private LinkedList<Container<BigRequest>> queue = new LinkedList<>();
   private LinkedList<Container<MenuItemReq>> menuItemQueue = new LinkedList<>();
+  private LinkedList<Container<MenuItemReq>> deleteMenuItemQueue = new LinkedList<>();
   private UnicastProcessor<BigRequest> requestStream;
   private UnicastProcessor<MenuItemReq> menuItemReqStr;
+  private UnicastProcessor<MenuItemReq> deleteMenuItemReqStr;
   private FluxSink<BigRequest> requestSink;
   private FluxSink<MenuItemReq> menuItemReqStrSink;
+  private FluxSink<MenuItemReq> deleteMenuItemReqStrSink;
   private Disposable ping;
   private RSocketRequester client;
   private ScheduledExecutorService shutDown = Executors.newSingleThreadScheduledExecutor();
@@ -93,23 +96,37 @@ class CoreController {
 
     return responseStream;
   }
+
   @MessageMapping("menuItemReqChannel")
-  public Flux<MenuItemReq> menuItemReqChannel(Flux<MenuItemReq> menuItemFlux){
+  public Flux<MenuItemReq> menuItemReqChannel(Flux<MenuItemReq> menuItemFlux) {
+
+    return genericChannel(menuItemFlux, this.menuItemQueue, this.menuItemReqStrSink);
+  }
+
+  @MessageMapping("deleteMenuItemReqChannel")
+  public Flux<MenuItemReq> deleteMenuItemReqChannel(Flux<MenuItemReq> menuItemFlux) {
+    return genericChannel(menuItemFlux, this.deleteMenuItemQueue, this.deleteMenuItemReqStrSink);
+  }
+
+  private Flux<MenuItemReq> genericChannel(
+      Flux<MenuItemReq> menuItemFlux,
+      LinkedList<Container<MenuItemReq>> queueAux,
+      FluxSink<MenuItemReq> sinkAux) {
     System.out.println("channel connect to menuitem mongo");
     UnicastProcessor<MenuItemReq> responseStream = UnicastProcessor.create();
-    FluxSink<MenuItemReq> responseSink = responseStream.sink();
+    FluxSink<MenuItemReq> responseSinkAux = responseStream.sink();
 
     menuItemFlux
-            .doOnNext(
-                    bigRequest -> {
-                      Container<MenuItemReq> container = new Container(responseSink);
-                      synchronized (this) {
-                        System.out.println("enviamos al mongo");
-                        this.menuItemQueue.add(container);
-                        this.menuItemReqStrSink.next(bigRequest);
-                      }
-                    })
-            .subscribe();
+        .doOnNext(
+            bigRequest -> {
+              Container<MenuItemReq> container = new Container(responseSinkAux);
+              synchronized (this) {
+                System.out.println("enviamos al mongo");
+                queueAux.add(container);
+                sinkAux.next(bigRequest);
+              }
+            })
+        .subscribe();
 
     return responseStream;
   }
@@ -127,6 +144,7 @@ class CoreController {
                     System.out.println("pinging now connecting");
                     connect();
                     connectMenuitem();
+                    deleteMenuItemConnect();
                     connected = true;
                     connecting = false;
                   }
@@ -184,6 +202,29 @@ class CoreController {
             .doOnNext(
                 request -> {
                   menuItemQueue.pop().getSink().next(request);
+                  // System.out.println("ID: " + bigRequest.getId());
+                })
+            .subscribe();
+  }
+
+  private void deleteMenuItemConnect() {
+    if (this.deleteMenuItemReqStr != null) {
+      this.deleteMenuItemReqStr.sink().complete();
+      this.deleteMenuItemReqStr = null;
+    }
+    this.deleteMenuItemReqStr = UnicastProcessor.create();
+    this.deleteMenuItemReqStrSink = this.deleteMenuItemReqStr.sink();
+
+    menuItemReqConnection =
+        this.client
+            .route("deleteMenuItemChannel")
+            .metadata(this.credentials, this.mimeType)
+            .data(deleteMenuItemReqStr)
+            .retrieveFlux(MenuItemReq.class)
+            .retryWhen(Retry.fixedDelay(Integer.MAX_VALUE, Duration.ofSeconds(1)))
+            .doOnNext(
+                request -> {
+                  deleteMenuItemQueue.pop().getSink().next(request);
                   // System.out.println("ID: " + bigRequest.getId());
                 })
             .subscribe();
