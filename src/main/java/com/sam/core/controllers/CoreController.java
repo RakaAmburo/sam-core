@@ -101,9 +101,9 @@ class CoreController {
   @MessageMapping("menuItemReqChannel")
   public Flux<MenuItemReq> menuItemReqChannel(Flux<MenuItemReq> menuItemFlux) {
 
-    //return genericChannel(menuItemFlux, this.menuItemQueue, this.menuItemReqStrSink);
+    return genericChannel(menuItemFlux, this.menuItemQueue, this.menuItemReqStrSink);
 
-    System.out.println("channel connect to menuitem mongo");
+    /*System.out.println("channel connect to menuitem mongo");
     UnicastProcessor<MenuItemReq> responseStream = UnicastProcessor.create();
     FluxSink<MenuItemReq> responseSink = responseStream.sink();
 
@@ -119,7 +119,7 @@ class CoreController {
                     })
             .subscribe();
 
-    return responseStream;
+    return responseStream;*/
 
   }
 
