@@ -102,6 +102,7 @@ class CoreController {
   public Flux<MenuItemReq> menuItemReqChannel(Flux<MenuItemReq> menuItemFlux) {
 
     //return genericChannel(menuItemFlux, this.menuItemQueue, this.menuItemReqStrSink);
+    // no se refresca menuitemreqstresink
 
     System.out.println("channel connect to menuitem mongo");
     UnicastProcessor<MenuItemReq> responseStream = UnicastProcessor.create();
@@ -125,7 +126,25 @@ class CoreController {
 
   @MessageMapping("deleteMenuItemReqChannel")
   public Flux<MenuItemReq> deleteMenuItemReqChannel(Flux<MenuItemReq> menuItemFlux) {
-    return genericChannel(menuItemFlux, this.deleteMenuItemQueue, this.deleteMenuItemReqStrSink);
+    //return genericChannel(menuItemFlux, this.deleteMenuItemQueue, this.deleteMenuItemReqStrSink);
+    System.out.println("channel connect to menuitem mongo");
+    UnicastProcessor<MenuItemReq> responseStream = UnicastProcessor.create();
+    FluxSink<MenuItemReq> responseSinkAux = responseStream.sink();
+
+    menuItemFlux
+            .doOnNext(
+                    bigRequest -> {
+                      Container<MenuItemReq> container = new Container(responseSinkAux);
+                      synchronized (this) {
+                        System.out.println("enviamos al mongo");
+                        this.deleteMenuItemQueue.add(container);
+                        this.deleteMenuItemReqStrSink.next(bigRequest);
+                      }
+                    })
+            .subscribe();
+
+    return responseStream;
+
   }
 
   private Flux<MenuItemReq> genericChannel(
