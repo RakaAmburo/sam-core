@@ -68,7 +68,7 @@ class CoreController {
 
   @MessageMapping("startPing")
   Flux<String> startPing() {
-
+    System.out.println("entramos a pinging");
     Flux<String> pingSignal =
         Flux.fromStream(Stream.generate(() -> "ping")).delayElements(Duration.ofMillis(1000));
 
