@@ -70,7 +70,8 @@ class CoreController {
   Flux<String> startPing(RSocketRequester clientRSocketConnection) {
     clientRSocketConnection.rsocket().onClose().doFinally(consumer -> {
       System.out.println("se corto la luz");
-    });
+
+    }).subscribe();
     System.out.println("entramos a pinging");
     Flux<String> pingSignal =
         Flux.fromStream(Stream.generate(() -> "ping")).delayElements(Duration.ofMillis(1000));
