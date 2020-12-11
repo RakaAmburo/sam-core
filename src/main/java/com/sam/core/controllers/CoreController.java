@@ -67,7 +67,10 @@ class CoreController {
   }
 
   @MessageMapping("startPing")
-  Flux<String> startPing() {
+  Flux<String> startPing(RSocketRequester clientRSocketConnection) {
+    clientRSocketConnection.rsocket().onClose().doFinally(consumer -> {
+      System.out.println("se corto la luz");
+    });
     System.out.println("entramos a pinging");
     Flux<String> pingSignal =
         Flux.fromStream(Stream.generate(() -> "ping")).delayElements(Duration.ofMillis(1000));
@@ -78,7 +81,6 @@ class CoreController {
   @MessageMapping("channel")
   public Flux<BigRequest> channel(
       RSocketRequester clientRSocketConnection, Flux<BigRequest> bigRequestFlux) {
-
     System.out.println("channel connect to mongo");
     UnicastProcessor<BigRequest> responseStream = UnicastProcessor.create();
     FluxSink<BigRequest> responseSink = responseStream.sink();
@@ -101,7 +103,7 @@ class CoreController {
   @MessageMapping("menuItemReqChannel")
   public Flux<MenuItemReq> menuItemReqChannel(Flux<MenuItemReq> menuItemFlux) {
 
-    //return genericChannel(menuItemFlux, this.menuItemQueue, this.menuItemReqStrSink);
+    // return genericChannel(menuItemFlux, this.menuItemQueue, this.menuItemReqStrSink);
     // no se refresca menuitemreqstresink
 
     System.out.println("channel connect to menuitem mongo");
@@ -109,42 +111,40 @@ class CoreController {
     FluxSink<MenuItemReq> responseSink = responseStream.sink();
 
     menuItemFlux
-            .doOnNext(
-                    bigRequest -> {
-                      Container<MenuItemReq> container = new Container(responseSink);
-                      synchronized (this) {
-                        System.out.println("enviamos al mongo");
-                        this.menuItemQueue.add(container);
-                        this.menuItemReqStrSink.next(bigRequest);
-                      }
-                    })
-            .subscribe();
+        .doOnNext(
+            bigRequest -> {
+              Container<MenuItemReq> container = new Container(responseSink);
+              synchronized (this) {
+                System.out.println("enviamos al mongo");
+                this.menuItemQueue.add(container);
+                this.menuItemReqStrSink.next(bigRequest);
+              }
+            })
+        .subscribe();
 
     return responseStream;
-
   }
 
   @MessageMapping("deleteMenuItemReqChannel")
   public Flux<MenuItemReq> deleteMenuItemReqChannel(Flux<MenuItemReq> menuItemFlux) {
-    //return genericChannel(menuItemFlux, this.deleteMenuItemQueue, this.deleteMenuItemReqStrSink);
+    // return genericChannel(menuItemFlux, this.deleteMenuItemQueue, this.deleteMenuItemReqStrSink);
     System.out.println("channel connect to menuitem mongo");
     UnicastProcessor<MenuItemReq> responseStream = UnicastProcessor.create();
     FluxSink<MenuItemReq> responseSinkAux = responseStream.sink();
 
     menuItemFlux
-            .doOnNext(
-                    bigRequest -> {
-                      Container<MenuItemReq> container = new Container(responseSinkAux);
-                      synchronized (this) {
-                        System.out.println("enviamos al mongo");
-                        this.deleteMenuItemQueue.add(container);
-                        this.deleteMenuItemReqStrSink.next(bigRequest);
-                      }
-                    })
-            .subscribe();
+        .doOnNext(
+            bigRequest -> {
+              Container<MenuItemReq> container = new Container(responseSinkAux);
+              synchronized (this) {
+                System.out.println("enviamos al mongo");
+                this.deleteMenuItemQueue.add(container);
+                this.deleteMenuItemReqStrSink.next(bigRequest);
+              }
+            })
+        .subscribe();
 
     return responseStream;
-
   }
 
   private Flux<MenuItemReq> genericChannel(
@@ -212,7 +212,7 @@ class CoreController {
                 })
             .doOnError(
                 error -> {
-                  System.out.println(error);
+                  // System.out.println(error);
                 })
             .retryWhen(
                 Retry.fixedDelay(Integer.MAX_VALUE, Duration.ofSeconds(1))
