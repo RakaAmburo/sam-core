@@ -25,7 +25,6 @@ import java.util.LinkedList;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Stream;
 
 @Controller
 @Log4j2
@@ -70,11 +69,12 @@ class CoreController {
   Flux<String> startPing(RSocketRequester clientRSocketConnection) {
     clientRSocketConnection.rsocket().onClose().doFinally(consumer -> {
       System.out.println("se corto la luz");
-      clientRSocketConnection.rsocket().dispose();
+      clientRSocketConnection.rsocket();
     }).subscribe();
     System.out.println("entramos a pinging");
-    Flux<String> pingSignal =
-        Flux.fromStream(Stream.generate(() -> "ping")).delayElements(Duration.ofMillis(1000));
+    /*Flux<String> pingSignal =
+    Flux.fromStream(Stream.generate(() -> "ping")).delayElements(Duration.ofMillis(1000));*/
+    Flux<String> pingSignal = Flux.interval(Duration.ofMillis(1000)).map(i -> "ping " + i);
 
     return pingSignal;
   }
