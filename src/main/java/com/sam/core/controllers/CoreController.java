@@ -97,6 +97,7 @@ class CoreController {
                   this.requestSink.next(bigRequest);
                 }
               } else {
+                System.out.println("respondemos vacio");
                 BigRequest br = new BigRequest();
                 this.requestSink.next(br);
               }
