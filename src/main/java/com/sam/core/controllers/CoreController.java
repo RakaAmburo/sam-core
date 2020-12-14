@@ -90,10 +90,15 @@ class CoreController {
         .doOnNext(
             bigRequest -> {
               Container<BigRequest> container = new Container(responseSink);
-              synchronized (this) {
-                // System.out.println("enviamos al mongo");
-                this.queue.add(container);
-                this.requestSink.next(bigRequest);
+              if (connected){
+                synchronized (this) {
+                  // System.out.println("enviamos al mongo");
+                  this.queue.add(container);
+                  this.requestSink.next(bigRequest);
+                }
+              } else {
+                BigRequest br = new BigRequest();
+                this.requestSink.next(br);
               }
             })
         .subscribe();
@@ -307,6 +312,10 @@ class CoreController {
         if (diff > 1200) {
           System.out.println(diff + " too long diff, reconnecting!");
           connected = false;
+
+          this.queue.stream().forEach(bigRequestContainer -> {
+            bigRequestContainer.getSink().next(new BigRequest());
+          });
         }
       }
 
