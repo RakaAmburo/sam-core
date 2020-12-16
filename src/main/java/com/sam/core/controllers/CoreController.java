@@ -1,6 +1,7 @@
 package com.sam.core.controllers;
 
 import com.sam.commons.entities.BigRequest;
+import com.sam.commons.entities.MenuItemDTO;
 import com.sam.commons.entities.MenuItemReq;
 import com.sam.commons.entities.Status;
 import com.sam.core.entities.Container;
@@ -341,12 +342,14 @@ class CoreController {
               menuItemReqContainer -> {
                 MenuItemReq mir = new MenuItemReq();
                 mir.setStatus(Status.ERROR);
+                mir.setMenuItemDTO(MenuItemDTO.builder().build());
                 menuItemReqContainer.getSink().next(mir);
               });
           this.deleteMenuItemQueue.forEach(
               container -> {
                 MenuItemReq mir = new MenuItemReq();
                 mir.setStatus(Status.ERROR);
+                mir.setMenuItemDTO(MenuItemDTO.builder().build());
                 container.getSink().next(mir);
               });
         }
