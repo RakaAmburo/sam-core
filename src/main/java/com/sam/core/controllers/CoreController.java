@@ -67,10 +67,15 @@ class CoreController {
 
   @MessageMapping("startPing")
   Flux<String> startPing(RSocketRequester clientRSocketConnection) {
-    clientRSocketConnection.rsocket().onClose().doFinally(consumer -> {
-      System.out.println("se corto la luz");
-      clientRSocketConnection.rsocket();
-    }).subscribe();
+    clientRSocketConnection
+        .rsocket()
+        .onClose()
+        .doFinally(
+            consumer -> {
+              System.out.println("se corto la luz");
+              clientRSocketConnection.rsocket();
+            })
+        .subscribe();
     System.out.println("entramos a pinging");
     /*Flux<String> pingSignal =
     Flux.fromStream(Stream.generate(() -> "ping")).delayElements(Duration.ofMillis(1000));*/
@@ -90,7 +95,7 @@ class CoreController {
         .doOnNext(
             bigRequest -> {
               Container<BigRequest> container = new Container(responseSink);
-              if (connected){
+              if (connected) {
                 synchronized (this) {
                   // System.out.println("enviamos al mongo");
                   this.queue.add(container);
@@ -121,10 +126,15 @@ class CoreController {
         .doOnNext(
             bigRequest -> {
               Container<MenuItemReq> container = new Container(responseSink);
-              synchronized (this) {
-                System.out.println("enviamos al mongo");
-                this.menuItemQueue.add(container);
-                this.menuItemReqStrSink.next(bigRequest);
+              if (connected) {
+                synchronized (this) {
+                  System.out.println("enviamos al mongo");
+                  this.menuItemQueue.add(container);
+                  this.menuItemReqStrSink.next(bigRequest);
+                }
+              } else {
+                MenuItemReq mir = new MenuItemReq();
+                responseSink.next(mir);
               }
             })
         .subscribe();
@@ -143,10 +153,15 @@ class CoreController {
         .doOnNext(
             bigRequest -> {
               Container<MenuItemReq> container = new Container(responseSinkAux);
-              synchronized (this) {
-                System.out.println("enviamos al mongo");
-                this.deleteMenuItemQueue.add(container);
-                this.deleteMenuItemReqStrSink.next(bigRequest);
+              if (connected) {
+                synchronized (this) {
+                  System.out.println("enviamos al mongo");
+                  this.deleteMenuItemQueue.add(container);
+                  this.deleteMenuItemReqStrSink.next(bigRequest);
+                }
+              } else {
+                MenuItemReq mir = new MenuItemReq();
+                responseSinkAux.next(mir);
               }
             })
         .subscribe();
@@ -314,9 +329,19 @@ class CoreController {
           System.out.println(diff + " too long diff, reconnecting!");
           connected = false;
 
-          this.queue.stream().forEach(bigRequestContainer -> {
-            bigRequestContainer.getSink().next(new BigRequest());
-          });
+          this.queue.stream()
+              .forEach(
+                  bigRequestContainer -> {
+                    bigRequestContainer.getSink().next(new BigRequest());
+                  });
+          this.menuItemQueue.forEach(
+              menuItemReqContainer -> {
+                menuItemReqContainer.getSink().next(new MenuItemReq());
+              });
+          this.deleteMenuItemQueue.forEach(
+              container -> {
+                container.getSink().next(new MenuItemReq());
+              });
         }
       }
 
