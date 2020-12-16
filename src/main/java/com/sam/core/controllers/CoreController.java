@@ -2,6 +2,7 @@ package com.sam.core.controllers;
 
 import com.sam.commons.entities.BigRequest;
 import com.sam.commons.entities.MenuItemReq;
+import com.sam.commons.entities.Status;
 import com.sam.core.entities.Container;
 import io.rsocket.frame.decoder.PayloadDecoder;
 import io.rsocket.metadata.WellKnownMimeType;
@@ -134,6 +135,7 @@ class CoreController {
                 }
               } else {
                 MenuItemReq mir = new MenuItemReq();
+                mir.setStatus(Status.ERROR);
                 responseSink.next(mir);
               }
             })
@@ -161,6 +163,7 @@ class CoreController {
                 }
               } else {
                 MenuItemReq mir = new MenuItemReq();
+                mir.setStatus(Status.ERROR);
                 responseSinkAux.next(mir);
               }
             })
@@ -336,11 +339,15 @@ class CoreController {
                   });
           this.menuItemQueue.forEach(
               menuItemReqContainer -> {
-                menuItemReqContainer.getSink().next(new MenuItemReq());
+                MenuItemReq mir = new MenuItemReq();
+                mir.setStatus(Status.ERROR);
+                menuItemReqContainer.getSink().next(mir);
               });
           this.deleteMenuItemQueue.forEach(
               container -> {
-                container.getSink().next(new MenuItemReq());
+                MenuItemReq mir = new MenuItemReq();
+                mir.setStatus(Status.ERROR);
+                container.getSink().next(mir);
               });
         }
       }
