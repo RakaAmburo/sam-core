@@ -338,6 +338,7 @@ class CoreController {
                   bigRequestContainer -> {
                     bigRequestContainer.getSink().next(new BigRequest());
                   });
+          this.queue.clear();
           this.menuItemQueue.forEach(
               menuItemReqContainer -> {
                 MenuItemReq mir = new MenuItemReq();
@@ -345,6 +346,7 @@ class CoreController {
                 mir.setMenuItemDTO(MenuItemDTO.builder().build());
                 menuItemReqContainer.getSink().next(mir);
               });
+          this.menuItemQueue.clear();
           this.deleteMenuItemQueue.forEach(
               container -> {
                 MenuItemReq mir = new MenuItemReq();
@@ -352,6 +354,7 @@ class CoreController {
                 mir.setMenuItemDTO(MenuItemDTO.builder().build());
                 container.getSink().next(mir);
               });
+          this.deleteMenuItemQueue.clear();
         }
       }
 
