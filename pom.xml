@@ -113,6 +113,16 @@
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
+				<configuration>
+					<jvmArguments>
+						-Dapp.name=test
+						-Dcom.sun.management.jmxremote
+						-Dcom.sun.management.jmxremote.port=1099
+						-Dcom.sun.management.jmxremote.authenticate=false
+						-Dcom.sun.management.remote.ssl=false
+						-Djava.rmi.server.hostname=172.31.22.76
+					</jvmArguments>
+				</configuration>
 			</plugin>
 		</plugins>
 	</build>

@@ -1,3 +1,4 @@
+/*
 package com.sam.core.configurations.jmx;
 
 import org.springframework.beans.factory.annotation.Value;
@@ -34,3 +35,4 @@ public class ConfigureRMI {
     }
 }
 
+*/
