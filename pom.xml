@@ -106,6 +106,12 @@
 				<activatedProperties>ubuntu</activatedProperties>
 			</properties>
 		</profile>
+		<profile>
+			<id>localAllTest</id>
+			<properties>
+				<activatedProperties>localAllTest</activatedProperties>
+			</properties>
+		</profile>
 	</profiles>
 
 	<build>
